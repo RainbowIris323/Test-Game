@@ -3,6 +3,7 @@ import { t } from "@rbxts/t";
 
 const player = Players.LocalPlayer;
 
+
 function get_input( input: InputObject ) {
     /* walk <-> run */
     if ( input.KeyCode === Enum.KeyCode.LeftShift || input.KeyCode === Enum.KeyCode.RightShift) return 1;
@@ -23,6 +24,8 @@ UserInputService.InputBegan.Connect(input => {
         case 1:
             if ( Humanoid.WalkSpeed === 32 ) Humanoid.WalkSpeed = 16;
             else if ( Humanoid.WalkSpeed === 16 ) Humanoid.WalkSpeed = 32;
+            break;
+        case 0:
             break;
     };
 });
