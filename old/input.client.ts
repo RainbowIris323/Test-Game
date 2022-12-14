@@ -7,6 +7,10 @@ const player = Players.LocalPlayer;
 function get_input( input: InputObject ) {
     /* walk <-> run */
     if ( input.KeyCode === Enum.KeyCode.LeftShift || input.KeyCode === Enum.KeyCode.RightShift) return 1;
+    /* open inventory */
+    if ( input.KeyCode === Enum.KeyCode.E ) return 2;
+    /* open menu */
+    if ( input.KeyCode === Enum.KeyCode.M ) return 3;
     /* other */
     return 0;
 };
