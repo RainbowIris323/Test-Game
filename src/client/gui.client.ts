@@ -3,6 +3,7 @@ import { Players, UserInputService, ReplicatedStorage } from "@rbxts/services";
 interface PlayerGui extends BasePlayerGui {
 	ScreenGui: ScreenGui & {
 		Toolbar: Frame & {
+			Active: StringValue;
 			["1"]: ImageButton & {
 				UICorner: UICorner;
 				UIStroke: UIStroke;
@@ -136,6 +137,13 @@ const Inventory = ReplicatedStorage.GameData.Inventory.WaitForChild(`${player.Us
 
 const Toolbar = PlayerGui.ScreenGui.Toolbar;
 
+Toolbar.GetChildren().forEach((child) => {
+	assert(child.IsA("ImageButton"));
+	child.Activated.Connect(() => {
+		Toolbar.Active.Value = child.Name;
+	});
+});
+
 class Menu {
 	menu: Frame;
 	menuName: TextLabel;
@@ -188,13 +196,22 @@ class Menu {
 			item.Parent = PlayerGui.ScreenGui.Menu.menus.Inventory.Items;
 			item.Visible = true;
 			item.Activated.Connect(() => {
+				let done = false;
 				Toolbar.GetChildren().forEach((child) => {
+					if (done) return;
+					assert(child.IsA("ImageButton"));
+					const name = child.FindFirstChild("name") as TextLabel;
+					if (name.Text === item.Name) return (done = true);
+				});
+				Toolbar.GetChildren().forEach((child) => {
+					if (done) return;
 					assert(child.IsA("ImageButton"));
 					const name = child.FindFirstChild("name") as TextLabel;
 					const quantity = child.FindFirstChild("Quantity") as TextLabel;
 					if (name.Text === "") {
 						name.Text = item.Name;
 						quantity.Text = item.Quantity.Text;
+						done = true;
 					}
 				});
 			});
