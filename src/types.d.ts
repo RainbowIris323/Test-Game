@@ -79,3 +79,14 @@ export interface Inventory extends Folder {
 	["Power Cube"]: IntValue;
 	Stone: IntValue;
 }
+
+export interface Item {
+	Name: string;
+	Tool: Model | undefined;
+	Build: Model | undefined;
+}
+
+export interface PlayerData {
+	Keybinds: Map<string, string>;
+	Inventory: Map<string, number>;
+}

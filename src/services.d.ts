@@ -15,5 +15,8 @@ interface ReplicatedStorage extends Instance {
 			Quantity: IntValue;
 		};
 	};
+	Events: Folder & {
+		DataTunnel: RemoteEvent;
+	};
 	Tool: Tool;
 }

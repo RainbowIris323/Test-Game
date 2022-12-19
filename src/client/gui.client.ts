@@ -1,6 +1,6 @@
 /* eslint-disable roblox-ts/lua-truthiness */
 import { Players, ContextActionService, ReplicatedStorage, StarterGui } from "@rbxts/services";
-import { ItemGui, KeybindSettingPage, PlayerGui, Settings } from "types";
+import { ItemGui, KeybindSettingPage, PlayerData, PlayerGui, Settings } from "types";
 
 StarterGui.SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false);
 StarterGui.SetCoreGuiEnabled(Enum.CoreGuiType.Chat, false);
@@ -15,7 +15,6 @@ player.CharacterAdded.Connect((char) => {
 });
 
 const PlayerGui = player.WaitForChild("PlayerGui") as PlayerGui;
-const Inventory = ReplicatedStorage.GameData.Inventory.WaitForChild(`${player.UserId}`) as Folder;
 
 const ScreenGui = PlayerGui.WaitForChild("ScreenGui") as ScreenGui;
 
@@ -23,6 +22,16 @@ const Toolbar = PlayerGui.ScreenGui.Toolbar;
 const KeybindsPage = PlayerGui.ScreenGui.Menu.menus.Settings.Items.Keybinds;
 
 const hand = ReplicatedStorage.Tool.Clone();
+
+let Data = {
+	Inventory: new Map<string, number>(),
+	Keybinds: new Map<string, string>(),
+} as PlayerData;
+
+ReplicatedStorage.Events.DataTunnel.OnClientEvent.Connect((Data1) => {
+	print(Data1);
+	Data = Data1 as PlayerData;
+});
 
 Toolbar.GetChildren().forEach((child) => {
 	if (!child.IsA("ImageButton")) return;
@@ -70,47 +79,40 @@ function changeMenu(TO: string) {
 	const menu = Menu.menus.FindFirstChild(menuName) as Frame;
 	menu.Visible = true;
 	if (menu.Name !== "Inventory") return;
-	Inventory.GetChildren()
-		.filter((child) => {
-			return true;
-			// if (child.Name.lower().find( query /* for search bar */)[0]) return true;
-		})
-		.forEach((child) => {
-			if (!child.IsA("IntValue")) return;
-			if (child.Value === 0) return;
-			const item = PlayerGui.ScreenGui.Menu.menus.Inventory.ItemTemplate.Clone();
-			item.Name = child.Name;
-			item.itemQuantity.Text = `${child.Value}`;
-			item.itemName.Text = child.Name;
-			item.Parent = PlayerGui.ScreenGui.Menu.menus.Inventory.Items;
-			item.Visible = true;
-			item.Activated.Connect(() => {
-				let done = false;
-				Toolbar.GetChildren().forEach((child) => {
+	Data.Inventory.forEach((value, key) => {
+		const item = PlayerGui.ScreenGui.Menu.menus.Inventory.ItemTemplate.Clone();
+		item.Name = key;
+		item.itemQuantity.Text = `${value}`;
+		item.itemName.Text = key;
+		item.Visible = true;
+		item.Parent = PlayerGui.ScreenGui.Menu.menus.Inventory.Items;
+		item.Activated.Connect(() => {
+			let done = false;
+			Toolbar.GetChildren().forEach((child) => {
+				if (done || !child.IsA("ImageButton")) return;
+				const child1 = child as ItemGui;
+				if (child1.itemName.Text === item.Name) {
+					child1.itemName.Text = "";
+					child1.itemQuantity.Text = "";
+					return (done = true);
+				}
+			});
+			Toolbar.GetChildren()
+				.sort((a, b) => {
+					if (a.Name < b.Name) return true;
+					return false;
+				})
+				.forEach((child) => {
 					if (done || !child.IsA("ImageButton")) return;
 					const child1 = child as ItemGui;
-					if (child1.itemName.Text === item.Name) {
-						child1.itemName.Text = "";
-						child1.itemQuantity.Text = "";
-						return (done = true);
+					if (child1.itemName.Text === "") {
+						child1.itemName.Text = item.Name;
+						child1.itemQuantity.Text = item.itemQuantity.Text;
+						done = true;
 					}
 				});
-				Toolbar.GetChildren()
-					.sort((a, b) => {
-						if (a.Name < b.Name) return true;
-						return false;
-					})
-					.forEach((child) => {
-						if (done || !child.IsA("ImageButton")) return;
-						const child1 = child as ItemGui;
-						if (child1.itemName.Text === "") {
-							child1.itemName.Text = item.Name;
-							child1.itemQuantity.Text = item.itemQuantity.Text;
-							done = true;
-						}
-					});
-			});
 		});
+	});
 }
 
 Menu.WaitForChild("menuButtons")
@@ -121,8 +123,6 @@ Menu.WaitForChild("menuButtons")
 			changeMenu(child.Name);
 		});
 	});
-
-const playerSettings = ReplicatedStorage.GameData.Settings.WaitForChild(`${player.UserId}`) as Settings;
 
 let lastKey = "";
 
@@ -159,13 +159,12 @@ function updateKey(newKey: string, actionName: string) {
 
 let c = 1;
 
-playerSettings.Keybinds.GetChildren().forEach((setting) => {
-	if (!setting.IsA("StringValue")) return;
+Data.Keybinds.forEach((value, key) => {
 	KeybindsPage.Size = KeybindsPage.Size.add(new UDim2(0, 0, 0, 75));
 	const page = KeybindsPage.Template.Clone();
 	page.Position = page.Position.add(new UDim2(0, 0, 0, 75 * c));
-	page.name.Text = setting.Name;
-	page.value.Text = setting.Value;
+	page.name.Text = key;
+	page.value.Text = value;
 	page.Visible = true;
 	page.Parent = KeybindsPage.content;
 	page.value.Activated.Connect(() => {
@@ -180,12 +179,10 @@ playerSettings.Keybinds.GetChildren().forEach((setting) => {
 				if (child1.value.Text === lastKey) good = false;
 			});
 			if (good) page.value.Text = lastKey;
-			setting.Value = lastKey;
+			ReplicatedStorage.Events.DataTunnel.FireServer("UPDATE", "KEYBINDS", key, lastKey);
+			updateKey(lastKey, `KEY-${key}`);
 		}
 	});
-	updateKey(setting.Value, `KEY-${setting.Name}`);
-	setting.Changed.Connect(() => {
-		updateKey(setting.Value, `KEY-${setting.Name}`);
-	});
+	updateKey(value, `KEY-${key}`);
 	c++;
 });
