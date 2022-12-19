@@ -1,6 +1,19 @@
 /* eslint-disable roblox-ts/lua-truthiness */
 import { Players, ContextActionService, ReplicatedStorage, StarterGui } from "@rbxts/services";
-import { ItemGui, KeybindSettingPage, PlayerData, PlayerGui, Settings } from "types";
+import { ItemGui, KeybindSettingPage, PlayerGui } from "types";
+import { User } from "types";
+
+const user: User = { Data: new Map<string, string>() };
+
+ReplicatedStorage.Events.DataTunnel.OnClientEvent.Connect((method, key, value) => {
+	print(key);
+	if (tostring(method) === "UPDATE") user.Data.set(tostring(key), tostring(value));
+	if (tostring(method) === "SET") user.Data = key;
+});
+
+function set(key: string, value: string) {
+	ReplicatedStorage.Events.DataTunnel.FireServer("SET", key, value);
+}
 
 StarterGui.SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false);
 StarterGui.SetCoreGuiEnabled(Enum.CoreGuiType.Chat, false);
@@ -23,16 +36,6 @@ const KeybindsPage = PlayerGui.ScreenGui.Menu.menus.Settings.Items.Keybinds;
 
 const hand = ReplicatedStorage.Tool.Clone();
 
-let Data = {
-	Inventory: new Map<string, number>(),
-	Keybinds: new Map<string, string>(),
-} as PlayerData;
-
-ReplicatedStorage.Events.DataTunnel.OnClientEvent.Connect((Data1) => {
-	print(Data1);
-	Data = Data1 as PlayerData;
-});
-
 Toolbar.GetChildren().forEach((child) => {
 	if (!child.IsA("ImageButton")) return;
 	child.Activated.Connect(() => {
@@ -51,7 +54,8 @@ Toolbar.active.Changed.Connect((value) => {
 	if (lastActive === "") return;
 	const itemName = Toolbar.FindFirstChild(lastActive)?.FindFirstChild("itemName") as TextLabel;
 	if (itemName.Text === "") return;
-	const part = ReplicatedStorage.Drops.WaitForChild(itemName.Text).Clone() as Part;
+	const part = ReplicatedStorage.Blocks.WaitForChild(itemName.Text).Clone() as Part;
+	part.Size = new Vector3(1.5, 1.5, 1.5);
 	part.Name = "Handle";
 	part.Parent = hand;
 });
@@ -79,11 +83,12 @@ function changeMenu(TO: string) {
 	const menu = Menu.menus.FindFirstChild(menuName) as Frame;
 	menu.Visible = true;
 	if (menu.Name !== "Inventory") return;
-	Data.Inventory.forEach((value, key) => {
+	user.Data.forEach((value, key) => {
+		if (key.split("/")[0] !== "Inventory") return;
 		const item = PlayerGui.ScreenGui.Menu.menus.Inventory.ItemTemplate.Clone();
-		item.Name = key;
-		item.itemQuantity.Text = `${value}`;
-		item.itemName.Text = key;
+		item.Name = key.split("/")[1];
+		item.itemQuantity.Text = value;
+		item.itemName.Text = key.split("/")[1];
 		item.Visible = true;
 		item.Parent = PlayerGui.ScreenGui.Menu.menus.Inventory.Items;
 		item.Activated.Connect(() => {
@@ -159,11 +164,12 @@ function updateKey(newKey: string, actionName: string) {
 
 let c = 1;
 
-Data.Keybinds.forEach((value, key) => {
+user.Data.forEach((value, key) => {
+	if (key.split("/")[0] !== "Keybinds") return;
 	KeybindsPage.Size = KeybindsPage.Size.add(new UDim2(0, 0, 0, 75));
 	const page = KeybindsPage.Template.Clone();
 	page.Position = page.Position.add(new UDim2(0, 0, 0, 75 * c));
-	page.name.Text = key;
+	page.name.Text = key.split("/")[1];
 	page.value.Text = value;
 	page.Visible = true;
 	page.Parent = KeybindsPage.content;
@@ -179,10 +185,10 @@ Data.Keybinds.forEach((value, key) => {
 				if (child1.value.Text === lastKey) good = false;
 			});
 			if (good) page.value.Text = lastKey;
-			ReplicatedStorage.Events.DataTunnel.FireServer("UPDATE", "KEYBINDS", key, lastKey);
-			updateKey(lastKey, `KEY-${key}`);
+			set(key, lastKey);
+			updateKey(lastKey, `KEY-${key.split("/")[1]}`);
 		}
 	});
-	updateKey(value, `KEY-${key}`);
+	updateKey(value, `KEY-${key.split("/")[1]}`);
 	c++;
 });

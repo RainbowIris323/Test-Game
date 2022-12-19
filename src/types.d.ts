@@ -86,7 +86,6 @@ export interface Item {
 	Build: Model | undefined;
 }
 
-export interface PlayerData {
-	Keybinds: Map<string, string>;
-	Inventory: Map<string, number>;
+export interface User {
+	Data: Map<string, string>;
 }
