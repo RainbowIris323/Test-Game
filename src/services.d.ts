@@ -1,21 +1,19 @@
 interface ReplicatedStorage extends Instance {
 	GameData: Folder & {
 		Inventory: Folder;
+		Settings: Folder;
 		Templates: Folder & {
-			Inventory: Folder & {
-				["Energy Cube"]: IntValue;
-				Stone: IntValue;
-			};
+			Inventory: Folder;
+			Settings: Folder;
 		};
 	};
-	TS: Folder;
 	Drops: Folder & {
 		["Energy Cube"]: Part & {
-			ParticleEmitter: ParticleEmitter;
 			Quantity: IntValue;
 		};
 		Stone: Part & {
 			Quantity: IntValue;
 		};
 	};
+	Tool: Tool;
 }

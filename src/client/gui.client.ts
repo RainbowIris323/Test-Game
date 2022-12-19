@@ -1,240 +1,191 @@
-import { Players, UserInputService, ReplicatedStorage } from "@rbxts/services";
+/* eslint-disable roblox-ts/lua-truthiness */
+import { Players, ContextActionService, ReplicatedStorage, StarterGui } from "@rbxts/services";
+import { ItemGui, KeybindSettingPage, PlayerGui, Settings } from "types";
 
-interface PlayerGui extends BasePlayerGui {
-	ScreenGui: ScreenGui & {
-		Toolbar: Frame & {
-			Active: StringValue;
-			["1"]: ImageButton & {
-				UICorner: UICorner;
-				UIStroke: UIStroke;
-				name: TextLabel;
-				Quantity: TextLabel;
-			};
-			["3"]: ImageButton & {
-				UICorner: UICorner;
-				UIStroke: UIStroke;
-				name: TextLabel;
-				Quantity: TextLabel;
-			};
-			["2"]: ImageButton & {
-				UICorner: UICorner;
-				UIStroke: UIStroke;
-				name: TextLabel;
-				Quantity: TextLabel;
-			};
-			["5"]: ImageButton & {
-				UICorner: UICorner;
-				UIStroke: UIStroke;
-				name: TextLabel;
-				Quantity: TextLabel;
-			};
-			["4"]: ImageButton & {
-				UICorner: UICorner;
-				UIStroke: UIStroke;
-				name: TextLabel;
-				Quantity: TextLabel;
-			};
-			["7"]: ImageButton & {
-				UICorner: UICorner;
-				UIStroke: UIStroke;
-				name: TextLabel;
-				Quantity: TextLabel;
-			};
-			["6"]: ImageButton & {
-				UICorner: UICorner;
-				UIStroke: UIStroke;
-				name: TextLabel;
-				Quantity: TextLabel;
-			};
-		};
-		Menu: Frame & {
-			menus: Folder & {
-				Inventory: Frame & {
-					Items: ScrollingFrame & {
-						UICorner: UICorner;
-						UIStroke: UIStroke;
-						UIPadding: UIPadding;
-						UIGridLayout: UIGridLayout;
-					};
-					ItemTemplate: ImageButton & {
-						UICorner: UICorner;
-						Quantity: TextLabel;
-						UIPadding: UIPadding;
-						name: TextLabel;
-					};
-					UIPadding: UIPadding;
-				};
-				Help: Frame & {
-					UIPadding: UIPadding;
-					ItemPage: Frame & {
-						Image: ImageLabel & {
-							UICorner: UICorner;
-						};
-						UIPadding: UIPadding;
-						UICorner: UICorner;
-						UIStroke: UIStroke;
-						Info: TextLabel;
-						Stats: TextLabel;
-					};
-					Pages: ScrollingFrame & {
-						UICorner: UICorner;
-						UIStroke: UIStroke;
-						UIPadding: UIPadding;
-						UIListLayout: UIListLayout;
-					};
-					PageButtonTemp: TextButton & {
-						UICorner: UICorner;
-						UIPadding: UIPadding;
-					};
-				};
-				Settings: Frame & {
-					UIPadding: UIPadding;
-					Items: ScrollingFrame & {
-						UICorner: UICorner;
-						UIStroke: UIStroke;
-						UIPadding: UIPadding;
-						UIListLayout: UIListLayout;
-					};
-				};
-			};
-			UIPadding: UIPadding;
-			active: StringValue;
-			UICorner: UICorner;
-			["static"]: Folder & {
-				line: Frame;
-			};
-			UIAspectRatioConstraint: UIAspectRatioConstraint;
-			name: TextLabel;
-			UIStroke: UIStroke;
-			menuButtons: Folder & {
-				Inventory: ImageButton & {
-					UICorner: UICorner;
-				};
-				Calculator: ImageButton & {
-					UICorner: UICorner;
-				};
-				Help: ImageButton & {
-					UICorner: UICorner;
-				};
-				Settings: ImageButton & {
-					UICorner: UICorner;
-				};
-			};
-			UISizeConstraint: UISizeConstraint;
-		};
-		UIPadding: UIPadding;
-		UIScale: UIScale;
-	};
-	ItemGui: BillboardGui & {
-		ItemName: TextLabel;
-	};
-}
+StarterGui.SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false);
+StarterGui.SetCoreGuiEnabled(Enum.CoreGuiType.Chat, false);
 
 const player = Players.LocalPlayer;
-const PlayerGui = player.WaitForChild("PlayerGui") as PlayerGui;
-wait(2);
-const Inventory = ReplicatedStorage.GameData.Inventory.WaitForChild(`${player.UserId}`) as Folder;
 
-const Toolbar = PlayerGui.ScreenGui.Toolbar;
-
-Toolbar.GetChildren().forEach((child) => {
-	assert(child.IsA("ImageButton"));
-	child.Activated.Connect(() => {
-		Toolbar.Active.Value = child.Name;
-	});
+let Humanoid: Humanoid;
+player.CharacterAdded.Connect((char) => {
+	const e = char.WaitForChild("Humanoid");
+	if (!e.IsA("Humanoid")) return;
+	Humanoid = e;
 });
 
-class Menu {
-	menu: Frame;
-	menuName: TextLabel;
-	active: StringValue;
-	menus: Frame[];
-	buttons: ImageButton[];
-	constructor() {
-		this.menu = PlayerGui.ScreenGui.Menu;
-		this.menuName = PlayerGui.ScreenGui.Menu.name;
-		this.active = PlayerGui.ScreenGui.Menu.active;
-		this.menus = [
-			PlayerGui.ScreenGui.Menu.menus.Inventory,
-			PlayerGui.ScreenGui.Menu.menus.Settings,
-			PlayerGui.ScreenGui.Menu.menus.Help,
-		];
-		this.buttons = [
-			PlayerGui.ScreenGui.Menu.menuButtons.Inventory,
-			PlayerGui.ScreenGui.Menu.menuButtons.Settings,
-			PlayerGui.ScreenGui.Menu.menuButtons.Help,
-		];
-		this.active.Changed.Connect((changeTo) => this.changeMenu(changeTo));
-		for (const button of this.buttons) {
-			button.Activated.Connect(() => (this.active.Value = button.Name));
+const PlayerGui = player.WaitForChild("PlayerGui") as PlayerGui;
+const Inventory = ReplicatedStorage.GameData.Inventory.WaitForChild(`${player.UserId}`) as Folder;
+
+const ScreenGui = PlayerGui.WaitForChild("ScreenGui") as ScreenGui;
+
+const Toolbar = PlayerGui.ScreenGui.Toolbar;
+const KeybindsPage = PlayerGui.ScreenGui.Menu.menus.Settings.Items.Keybinds;
+
+const hand = ReplicatedStorage.Tool.Clone();
+
+Toolbar.GetChildren().forEach((child) => {
+	if (!child.IsA("ImageButton")) return;
+	child.Activated.Connect(() => {
+		Toolbar.active.Value = child.Name;
+	});
+});
+let lastActive = "1";
+Toolbar.active.Changed.Connect((value) => {
+	let stroke = Toolbar.FindFirstChild(lastActive)?.FindFirstChild("UIStroke") as UIStroke;
+	stroke.Transparency = 0.5;
+	lastActive = value;
+	stroke = Toolbar.FindFirstChild(lastActive)?.FindFirstChild("UIStroke") as UIStroke;
+	stroke.Transparency = 0.25;
+	Humanoid.EquipTool(hand);
+	hand.GetChildren().forEach((child) => child.Destroy());
+	if (lastActive === "") return;
+	const itemName = Toolbar.FindFirstChild(lastActive)?.FindFirstChild("itemName") as TextLabel;
+	if (itemName.Text === "") return;
+	const part = ReplicatedStorage.Drops.WaitForChild(itemName.Text).Clone() as Part;
+	part.Name = "Handle";
+	part.Parent = hand;
+});
+
+let menuName = "";
+const Menu = PlayerGui.ScreenGui.Menu;
+
+function changeMenu(TO: string) {
+	if (menuName) {
+		const menu = Menu.menus.FindFirstChild(menuName) as Frame;
+		if (menu.Name === "Inventory") {
+			menu.WaitForChild("Items")
+				.GetChildren()
+				.forEach((child) => {
+					if (child.IsA("ImageButton")) child.Destroy();
+				});
 		}
+		menu.Visible = false;
 	}
-	toggleMenu() {
-		if (this.menu.Visible === false) return (this.menu.Visible = true);
-		if (this.menu.Visible === true) return (this.menu.Visible = false);
-	}
-	changeMenu(TO: string) {
-		this.menuName.Text = TO;
-		for (const menu of this.menus) {
-			if (menu.Name === TO) {
-				menu.Visible = true;
-				if (menu.Name === "Inventory") this.openInventory();
-			} else {
-				menu.Visible = false;
-				if (menu.Name === "Inventory") this.closeInventory();
-			}
-		}
-	}
-	openInventory() {
-		Inventory.GetChildren().forEach((child) => {
-			assert(child.IsA("IntValue"));
+	Menu.Visible = false;
+	if (menuName === TO) return (menuName = "");
+	menuName = TO;
+	if (menuName === "") return;
+	Menu.Visible = true;
+	const menu = Menu.menus.FindFirstChild(menuName) as Frame;
+	menu.Visible = true;
+	if (menu.Name !== "Inventory") return;
+	Inventory.GetChildren()
+		.filter((child) => {
+			return true;
+			// if (child.Name.lower().find( query /* for search bar */)[0]) return true;
+		})
+		.forEach((child) => {
+			if (!child.IsA("IntValue")) return;
 			if (child.Value === 0) return;
 			const item = PlayerGui.ScreenGui.Menu.menus.Inventory.ItemTemplate.Clone();
 			item.Name = child.Name;
-			item.Quantity.Text = `${child.Value}`;
-			item.name.Text = child.Name;
+			item.itemQuantity.Text = `${child.Value}`;
+			item.itemName.Text = child.Name;
 			item.Parent = PlayerGui.ScreenGui.Menu.menus.Inventory.Items;
 			item.Visible = true;
 			item.Activated.Connect(() => {
 				let done = false;
 				Toolbar.GetChildren().forEach((child) => {
-					if (done) return;
-					assert(child.IsA("ImageButton"));
-					const name = child.FindFirstChild("name") as TextLabel;
-					if (name.Text === item.Name) return (done = true);
-				});
-				Toolbar.GetChildren().forEach((child) => {
-					if (done) return;
-					assert(child.IsA("ImageButton"));
-					const name = child.FindFirstChild("name") as TextLabel;
-					const quantity = child.FindFirstChild("Quantity") as TextLabel;
-					if (name.Text === "") {
-						name.Text = item.Name;
-						quantity.Text = item.Quantity.Text;
-						done = true;
+					if (done || !child.IsA("ImageButton")) return;
+					const child1 = child as ItemGui;
+					if (child1.itemName.Text === item.Name) {
+						child1.itemName.Text = "";
+						child1.itemQuantity.Text = "";
+						return (done = true);
 					}
 				});
+				Toolbar.GetChildren()
+					.sort((a, b) => {
+						if (a.Name < b.Name) return true;
+						return false;
+					})
+					.forEach((child) => {
+						if (done || !child.IsA("ImageButton")) return;
+						const child1 = child as ItemGui;
+						if (child1.itemName.Text === "") {
+							child1.itemName.Text = item.Name;
+							child1.itemQuantity.Text = item.itemQuantity.Text;
+							done = true;
+						}
+					});
 			});
 		});
-	}
-	closeInventory() {
-		PlayerGui.ScreenGui.Menu.menus.Inventory.Items.GetChildren().forEach((child) => {
-			try {
-				assert(child.IsA("ImageButton"));
-				child.Destroy();
-			} catch {
-				return;
-			}
+}
+
+Menu.WaitForChild("menuButtons")
+	.GetChildren()
+	.forEach((child1) => {
+		const child = child1 as ImageButton;
+		child.Activated.Connect(() => {
+			changeMenu(child.Name);
 		});
+	});
+
+const playerSettings = ReplicatedStorage.GameData.Settings.WaitForChild(`${player.UserId}`) as Settings;
+
+let lastKey = "";
+
+function handleAction(actionName: String, inputState: Enum.UserInputState, inputObject: InputObject) {
+	if (inputState === Enum.UserInputState.Begin) {
+		print(actionName);
+		if (actionName === "KEY-Inventory") {
+			changeMenu("Inventory");
+		}
+		if (actionName === "KEY-Settings") {
+			changeMenu("Settings");
+		}
+		if (actionName === "KEY-Help") {
+			changeMenu("Help");
+		}
+		if (actionName === "KEY-Sprint") {
+			if (!Humanoid) return;
+			if (Humanoid.WalkSpeed === 32) return (Humanoid.WalkSpeed = 16);
+			if (Humanoid.WalkSpeed === 16) return (Humanoid.WalkSpeed = 32);
+		}
+		if (actionName === "KEYBOARD") {
+			lastKey = inputObject.KeyCode.Name;
+		}
 	}
 }
 
-const menu = new Menu();
+function updateKey(newKey: string, actionName: string) {
+	ContextActionService.UnbindAction(actionName);
+	const keyCode = Enum.KeyCode.GetEnumItems().filter((value) => {
+		if (value.Name === newKey) return true;
+	})[0];
+	ContextActionService.BindAction(actionName, handleAction, false, keyCode);
+}
 
-UserInputService.InputBegan.Connect((input) => {
-	if (input.KeyCode === Enum.KeyCode.E) {
-		// open menu on Inventory
-		menu.toggleMenu();
-		menu.changeMenu("Inventory");
-	}
+let c = 1;
+
+playerSettings.Keybinds.GetChildren().forEach((setting) => {
+	if (!setting.IsA("StringValue")) return;
+	KeybindsPage.Size = KeybindsPage.Size.add(new UDim2(0, 0, 0, 75));
+	const page = KeybindsPage.Template.Clone();
+	page.Position = page.Position.add(new UDim2(0, 0, 0, 75 * c));
+	page.name.Text = setting.Name;
+	page.value.Text = setting.Value;
+	page.Visible = true;
+	page.Parent = KeybindsPage.content;
+	page.value.Activated.Connect(() => {
+		lastKey = "";
+		ContextActionService.BindAction("KEYBOARD", handleAction, false, Enum.UserInputType.Keyboard);
+		wait(2);
+		ContextActionService.UnbindAction("KEYBOARD");
+		if (lastKey !== "") {
+			let good = true;
+			KeybindsPage.content.GetChildren().forEach((child) => {
+				const child1 = child as KeybindSettingPage;
+				if (child1.value.Text === lastKey) good = false;
+			});
+			if (good) page.value.Text = lastKey;
+			setting.Value = lastKey;
+		}
+	});
+	updateKey(setting.Value, `KEY-${setting.Name}`);
+	setting.Changed.Connect(() => {
+		updateKey(setting.Value, `KEY-${setting.Name}`);
+	});
+	c++;
 });
