@@ -54,10 +54,21 @@ Toolbar.active.Changed.Connect((value) => {
 	if (lastActive === "") return;
 	const itemName = Toolbar.FindFirstChild(lastActive)?.FindFirstChild("itemName") as TextLabel;
 	if (itemName.Text === "") return;
-	const part = ReplicatedStorage.Blocks.WaitForChild(itemName.Text).Clone() as Part;
-	part.Size = new Vector3(1.5, 1.5, 1.5);
-	part.Name = "Handle";
-	part.Parent = hand;
+	const part = ReplicatedStorage.Blocks.FindFirstChild(itemName.Text);
+	if (!part) {
+		const tool = ReplicatedStorage.Tools.FindFirstChild(itemName.Text);
+		if (!tool || !tool.IsA("UnionOperation")) return;
+		const tool1 = tool.Clone() as UnionOperation;
+		tool1.Name = "Handle";
+		tool1.Parent = hand;
+		return;
+	}
+	if (!part.IsA("Part")) return;
+	const part1 = part.Clone() as Part;
+	part1.Size = new Vector3(1.5, 1.5, 1.5);
+	part1.Name = "Handle";
+	part1.Anchored = false;
+	part1.Parent = hand;
 });
 
 let menuName = "";
@@ -84,7 +95,7 @@ function changeMenu(TO: string) {
 	menu.Visible = true;
 	if (menu.Name !== "Inventory") return;
 	user.Data.forEach((value, key) => {
-		if (key.split("/")[0] !== "Inventory") return;
+		if (key.split("/")[0] !== "Inventory" || tonumber(value) === 0) return;
 		const item = PlayerGui.ScreenGui.Menu.menus.Inventory.ItemTemplate.Clone();
 		item.Name = key.split("/")[1];
 		item.itemQuantity.Text = value;
@@ -131,9 +142,12 @@ Menu.WaitForChild("menuButtons")
 
 let lastKey = "";
 
-function handleAction(actionName: String, inputState: Enum.UserInputState, inputObject: InputObject) {
+function handleAction(actionName: string, inputState: Enum.UserInputState, inputObject: InputObject) {
 	if (inputState === Enum.UserInputState.Begin) {
 		print(actionName);
+		if (actionName.split("-")[0] === "TOOLBAR") {
+			Toolbar.active.Value = actionName.split("-")[1];
+		}
 		if (actionName === "KEY-Inventory") {
 			changeMenu("Inventory");
 		}
@@ -191,4 +205,39 @@ user.Data.forEach((value, key) => {
 	});
 	updateKey(value, `KEY-${key.split("/")[1]}`);
 	c++;
+});
+
+updateKey("One", "TOOLBAR-1");
+updateKey("Two", "TOOLBAR-2");
+updateKey("Three", "TOOLBAR-3");
+updateKey("Four", "TOOLBAR-4");
+updateKey("Five", "TOOLBAR-5");
+updateKey("Six", "TOOLBAR-6");
+updateKey("Seven", "TOOLBAR-7");
+
+const mouse = player.GetMouse();
+const SelectionBox = ReplicatedStorage.SelectionBox.Clone();
+
+mouse.Move.Connect(() => {
+	const target = mouse.Target;
+	if (target) {
+		SelectionBox.Parent = target;
+		SelectionBox.Adornee = target;
+	}
+});
+
+mouse.Button1Down.Connect(() => {
+	const target = mouse.Target;
+	if (!target || !target.IsA("Instance")) return;
+	const eq = Toolbar.FindFirstChild(Toolbar.active.Value)?.FindFirstChild("itemName") as TextLabel;
+	ReplicatedStorage.Events.EventTunnel.FireServer("TOOL-ACTIVATED", eq.Text, target);
+});
+
+mouse.Button2Down.Connect(() => {
+	ReplicatedStorage.Events.EventTunnel.FireServer(
+		"ITEM-USE",
+		Toolbar.active.Value,
+		mouse.Target,
+		mouse.TargetSurface,
+	);
 });
