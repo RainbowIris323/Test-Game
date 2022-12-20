@@ -3,22 +3,12 @@ import { Players, ContextActionService, ReplicatedStorage, StarterGui } from "@r
 import { ItemGui, KeybindSettingPage, PlayerGui } from "types";
 import { User } from "types";
 
+const player = Players.LocalPlayer;
+const PlayerGui = player.WaitForChild("PlayerGui") as PlayerGui;
 const user: User = { Data: new Map<string, string>() };
-
-ReplicatedStorage.Events.DataTunnel.OnClientEvent.Connect((method, key, value) => {
-	print(key);
-	if (tostring(method) === "UPDATE") user.Data.set(tostring(key), tostring(value));
-	if (tostring(method) === "SET") user.Data = key;
-});
-
-function set(key: string, value: string) {
-	ReplicatedStorage.Events.DataTunnel.FireServer("SET", key, value);
-}
 
 StarterGui.SetCoreGuiEnabled(Enum.CoreGuiType.Backpack, false);
 StarterGui.SetCoreGuiEnabled(Enum.CoreGuiType.Chat, false);
-
-const player = Players.LocalPlayer;
 
 let Humanoid: Humanoid;
 player.CharacterAdded.Connect((char) => {
@@ -27,11 +17,29 @@ player.CharacterAdded.Connect((char) => {
 	Humanoid = e;
 });
 
-const PlayerGui = player.WaitForChild("PlayerGui") as PlayerGui;
+wait(1);
+const Toolbar = PlayerGui.ScreenGui.Toolbar;
+
+ReplicatedStorage.Events.DataTunnel.OnClientEvent.Connect((method, key, value) => {
+	if (tostring(method) === "UPDATE") {
+		user.Data.set(tostring(key), tostring(value));
+		const eq = Toolbar.FindFirstChild(Toolbar.active.Value)?.FindFirstChild("itemName") as TextLabel;
+		if (tostring(key).split("/")[1] === eq.Text) {
+			const eq = Toolbar.FindFirstChild(Toolbar.active.Value)?.FindFirstChild("itemQuantity") as TextLabel;
+			eq.Text = tostring(value);
+		}
+	}
+	if (tostring(method) === "SET") user.Data = key;
+});
+
+function set(key: string, value: string) {
+	ReplicatedStorage.Events.DataTunnel.FireServer("SET", key, value);
+}
+
+wait(1);
 
 const ScreenGui = PlayerGui.WaitForChild("ScreenGui") as ScreenGui;
 
-const Toolbar = PlayerGui.ScreenGui.Toolbar;
 const KeybindsPage = PlayerGui.ScreenGui.Menu.menus.Settings.Items.Keybinds;
 
 const hand = ReplicatedStorage.Tool.Clone();
@@ -223,6 +231,9 @@ mouse.Move.Connect(() => {
 	if (target) {
 		SelectionBox.Parent = target;
 		SelectionBox.Adornee = target;
+	} else {
+		SelectionBox.Parent = undefined;
+		SelectionBox.Adornee = undefined;
 	}
 });
 
@@ -234,10 +245,8 @@ mouse.Button1Down.Connect(() => {
 });
 
 mouse.Button2Down.Connect(() => {
-	ReplicatedStorage.Events.EventTunnel.FireServer(
-		"ITEM-USE",
-		Toolbar.active.Value,
-		mouse.Target,
-		mouse.TargetSurface,
-	);
+	const target = mouse.Target;
+	if (!target || !target.IsA("Instance")) return;
+	const eq = Toolbar.FindFirstChild(Toolbar.active.Value)?.FindFirstChild("itemName") as TextLabel;
+	ReplicatedStorage.Events.EventTunnel.FireServer("ITEM-USE", eq.Text, mouse.Target, mouse.TargetSurface);
 });

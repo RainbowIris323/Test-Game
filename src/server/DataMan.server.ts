@@ -6,8 +6,8 @@ import { User } from "types";
 const userData = new Map<number, Map<string, string>>();
 const baseData = new Map<number, Folder>();
 
-const PlayerDataStore = DataStoreService.GetDataStore("PlayerDataStore=v1.1");
-const BaseDataStore = DataStoreService.GetDataStore("BaseDataStore=v1.1");
+const PlayerDataStore = DataStoreService.GetDataStore("PlayerDataStore=v1.2");
+const BaseDataStore = DataStoreService.GetDataStore("BaseDataStore=v1.2");
 
 function NewData() {
 	const UserData = new Map<string, string>();
@@ -115,7 +115,41 @@ ReplicatedStorage.Events.DataTunnel.OnServerEvent.Connect((player, IO, key, valu
 ReplicatedStorage.Events.EventTunnel.OnServerEvent.Connect((player, Event, Equiped, Target, TargetSurface) => {
 	if (!Equiped) return;
 	if (Event === "ITEM-USE") {
-		return;
+		if (!TargetSurface || !Target) return;
+		const data = userData.get(player.UserId) as Map<string, string>;
+		if (!data) return;
+		const item = tonumber(data.get(`Inventory/${Equiped}`));
+		const base = baseData.get(player.UserId);
+		if (!base || !item || item < 1) return;
+		const block = ReplicatedStorage.Blocks.FindFirstChild(tostring(Equiped));
+		if (!block) return;
+		const Block = block.Clone() as Part;
+		const target = Target as Part;
+		switch (TargetSurface) {
+			case Enum.NormalId.Top:
+				Block.Position = target.Position.add(new Vector3(0, 4, 0));
+				break;
+			case Enum.NormalId.Bottom:
+				Block.Position = target.Position.add(new Vector3(0, -4, 0));
+				break;
+			case Enum.NormalId.Left:
+				Block.Position = target.Position.add(new Vector3(-4, 0, 0));
+				break;
+			case Enum.NormalId.Right:
+				Block.Position = target.Position.add(new Vector3(4, 0, 0));
+				break;
+			case Enum.NormalId.Front:
+				Block.Position = target.Position.add(new Vector3(0, 0, -4));
+				break;
+			case Enum.NormalId.Back:
+				Block.Position = target.Position.add(new Vector3(0, 0, 4));
+				break;
+			default:
+				Block.Destroy();
+				return;
+		}
+		Block.Parent = base;
+		UpdateData(player, `Inventory/${Equiped}`, `${item - 1}`);
 	}
 	if (Event === "TOOL-ACTIVATED") {
 		const Target1 = Target as Part;
